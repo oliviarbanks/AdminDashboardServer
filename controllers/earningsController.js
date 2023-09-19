@@ -17,7 +17,7 @@ exports.getData = (_req, res) => {
                     name: earnings.name,
                     date: earnings.date,
                     amount: earnings.amount,
-                    paid: earnings.paid
+                    paid: earnings.paid,
                 };
             });
             res.status(200).json(response);
@@ -27,32 +27,57 @@ exports.getData = (_req, res) => {
         );
 };
 
-
 exports.addData = (req, res) => {
-    const id = uuid.v4 ();
-    console.log (req.body);
+    const id = uuid.v4();
+    console.log(req.body);
     if (
-        !req.body.name || 
-        !req.body.date || 
-        !req.body.amount || 
+        !req.body.name ||
+        !req.body.date ||
+        !req.body.amount ||
         !req.body.paid
-        ) {
-        return res.status(400).send('Please make sure to provide name, ma email fields in a request');
+    ) {
+        return res
+            .status(400)
+            .send("Please make sure to provide name, date, amount, and paid fields in the request");
     }
 
-    knex('earnings')
-        .insert({...req.body, id})
+    knex("earnings")
+        .insert({ ...req.body, id })
         .then(() => {
             res.status(201).json({
-                message: 'Successfully added earnings',
+                message: "Successfully added earnings",
                 data: {
                     id,
                     name: req.body.name,
                     date: req.body.date,
                     amount: req.body.amount,
-                    paid: req.body.paid
-                }
+                    paid: req.body.paid,
+                },
             });
         })
-        .catch((err) => res.status(400).send(`Error creating Warehouse: ${err}`));
+        .catch((err) =>
+            res.status(400).send(`Error creating Earning: ${err}`)
+        );
+};
+
+exports.deleteEarning = (req, res) => {
+    const { id } = req.params;
+
+    if (!id) {
+        return res.status(400).send("Please provide an ID to delete");
+    }
+
+    knex("earnings")
+        .where({ id })
+        .del()
+        .then((deletedRows) => {
+            if (deletedRows === 0) {
+                return res.status(404).json({ message: "Earning not found" });
+            }
+
+            res.status(200).json({ message: "Earning deleted successfully" });
+        })
+        .catch((err) =>
+            res.status(500).send(`Error deleting earning: ${err}`)
+        );
 };
