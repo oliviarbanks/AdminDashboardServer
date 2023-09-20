@@ -6,7 +6,6 @@ router
   .get(earningsController.getData)
   .post(earningsController.addData);
 
-// Add the DELETE route with the callback function
 router.route("/:id").delete((req, res) => {
   const { id } = req.params;
 

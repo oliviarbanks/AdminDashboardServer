@@ -34,14 +34,13 @@ exports.addData = (req, res) => {
         !req.body.name ||
         !req.body.date ||
         !req.body.amount ||
-        req.body.paid === undefined // Ensure paid is provided and not null
+        req.body.paid === undefined 
     ) {
         return res
             .status(400)
             .send("Please make sure to provide name, date, amount, and paid fields in the request");
     }
 
-    // Convert the paid field to 1 (true) or 0 (false)
     const paid = req.body.paid ? 1 : 0;
 
     knex("earnings")

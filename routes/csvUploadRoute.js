@@ -13,7 +13,7 @@ router.post('/csv', upload.single('csvFile'), (req, res) => {
     return res.status(400).send('No file uploaded.');
   }
 
-  console.log('Received CSV file:', req.file.originalname); // Add this line
+  console.log('Received CSV file:', req.file.originalname);
 
 
   const fileBuffer = req.file.buffer;
@@ -21,11 +21,10 @@ router.post('/csv', upload.single('csvFile'), (req, res) => {
   const results = [];
   csv({ headers: true, separator: '\t' })
     .on('data', (data) => {
-      console.log('Parsed CSV row:', data); // Add this line
+      console.log('Parsed CSV row:', data); 
 
       data.date = parse(data.date, 'M/d/yy', new Date());
 
-      // Convert "paid" and "not paid" to 1 and 0
       data.paid = data.paid.toLowerCase() === 'paid' ? 1 : 0;
 
       results.push(data);
