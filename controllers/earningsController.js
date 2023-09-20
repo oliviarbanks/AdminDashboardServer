@@ -34,15 +34,18 @@ exports.addData = (req, res) => {
         !req.body.name ||
         !req.body.date ||
         !req.body.amount ||
-        !req.body.paid
+        req.body.paid === undefined // Ensure paid is provided and not null
     ) {
         return res
             .status(400)
             .send("Please make sure to provide name, date, amount, and paid fields in the request");
     }
 
+    // Convert the paid field to 1 (true) or 0 (false)
+    const paid = req.body.paid ? 1 : 0;
+
     knex("earnings")
-        .insert({ ...req.body, id })
+        .insert({ ...req.body, paid, id })
         .then(() => {
             res.status(201).json({
                 message: "Successfully added earnings",
@@ -59,6 +62,7 @@ exports.addData = (req, res) => {
             res.status(400).send(`Error creating Earning: ${err}`)
         );
 };
+
 
 exports.deleteEarning = (req, res) => {
     const { id } = req.params;
