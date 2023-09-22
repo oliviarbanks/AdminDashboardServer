@@ -3,9 +3,9 @@ const multer = require('multer');
 const router = express.Router();
 const fastcsv = require('fast-csv');
 const bodyParser = require('body-parser');
-const knex = require("knex")(require("../knexfile"));
+const knex = require('./db'); // This imports the preconfigured knex instance
 const { v4: uuidv4 } = require('uuid'); // Import uuid
-const { parse, isValid } = require('date-fns');
+const { parse, isValid, format } = require('date-fns');
 
 // Use body-parser middleware for parsing JSON and URL-encoded data
 router.use(bodyParser.json());
@@ -14,6 +14,30 @@ router.use(
     extended: true,
   })
 );
+
+// Define an array of accepted date formats
+const acceptedDateFormats = ['yyyy-MM-dd', 'M/dd/yyyy', 'MM/dd/yyyy', 'dd/MM/yyyy', 'dd-MM-yyyy'];
+
+// Helper function to parse a date with a given format
+function parseDate(dateString) {
+  for (const formatStr of acceptedDateFormats) {
+    const parsedDate = parse(dateString, formatStr, new Date());
+    if (isValid(parsedDate)) {
+      return parsedDate;
+    }
+  }
+  return null; // Return null if parsing fails
+}
+
+// Helper function to format a date as 'MM-dd-yyyy'
+function formatDateCustom(dateString) {
+  const parsedDate = parseDate(dateString);
+  if (parsedDate) {
+    return format(parsedDate, 'yyyy-MM-dd');
+  } else {
+    return ''; // Return an empty string if parsing fails
+  }
+}
 
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
@@ -37,7 +61,7 @@ router.post('/csv', upload.single('csvFile'), (req, res) => {
       console.log('Parsed CSV row:', data);
 
       // Parse the date
-      const parsedDate = parse(data.Date, 'yyyy-MM-dd', new Date());
+      const parsedDate = parseDate(data.Date);
 
       if (!isValid(parsedDate)) {
         console.error('Invalid date format:', data.Date);
@@ -52,7 +76,8 @@ router.post('/csv', upload.single('csvFile'), (req, res) => {
       }
 
       // Convert 'Yes' and 'No' to integers (0 or 1)
-      const paid = data.Paid.toLowerCase() === 'yes' ? 1 : 0;
+      // const paid = data.Paid.toLowerCase() === 'yes' ? 1 : 0;
+      const paid = data.Paid && data.Paid.toLowerCase() === 'yes' ? 1 : 0;
 
       // Generate a unique ID using uuid
       const uniqueId = uuidv4(); // Generate a new unique ID for each row
@@ -60,7 +85,7 @@ router.post('/csv', upload.single('csvFile'), (req, res) => {
       results.push({
         id: uniqueId,
         name: data.Name,
-        date: parsedDate,
+        date: formatDateCustom(data.Date), // Format the date consistently
         amount: amount,
         paid: paid,
       });
@@ -82,19 +107,26 @@ router.post('/csv', upload.single('csvFile'), (req, res) => {
       );
 
       Promise.all(insertPromises)
-        .then(() => {
-          console.log(`Inserted ${results.length} rows successfully`);
-          res.status(200).json({ message: 'CSV file uploaded and processed successfully' });
-        })
-        .catch((error) => {
-          console.error('Error inserting rows:', error);
-          res.status(500).json({ message: 'Internal server error during insertion', error: error.message });
-        })
-        .finally(() => {
-          console.log('Database connection closed.');
-          knex.destroy(); // Close the database connection
-        });
+    .then(() => {
+      console.log(`Inserted ${results.length} rows successfully`);
+
+      // Include the formatted date in the response JSON
+      const responseData = {
+        message: 'CSV file uploaded and processed successfully',
+        dates: results.map((row) => row.date),
+      };
+
+      res.status(200).json(responseData);
     })
+    .catch((error) => {
+      console.error('Error inserting rows:', error);
+      res.status(500).json({ message: 'Internal server error during insertion', error: error.message });
+    })
+    .finally(() => {
+      console.log('Database connection closed.');
+      // Don't destroy the database connection here
+    });
+})
     .on('error', (error) => {
       console.error('Error parsing CSV:', error);
       res.status(400).json({ message: 'Error parsing CSV file' });
